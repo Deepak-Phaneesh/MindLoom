@@ -78,7 +78,16 @@ export function CollaborativeCanvas() {
 
   // 2. Connect to Real-time WebSocket CRDT Server
   useEffect(() => {
-    const wsUrl = `ws://localhost:1234/${roomName}`;
+    const defaultWsHost = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
+      ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${process.env.NEXT_PUBLIC_WS_URL || window.location.host}`
+      : 'ws://localhost:1234';
+
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL
+      ? (process.env.NEXT_PUBLIC_WS_URL.startsWith('ws')
+          ? `${process.env.NEXT_PUBLIC_WS_URL}/${roomName}`
+          : `wss://${process.env.NEXT_PUBLIC_WS_URL}/${roomName}`)
+      : `${defaultWsHost}/${roomName}`;
+
     let ws: WebSocket;
 
     try {

@@ -1,0 +1,25 @@
+services:
+  # Next.js Web App
+  - type: web
+    name: mindloom-web
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_WS_URL
+        fromService:
+          type: web
+          name: mindloom-sync
+          property: host
+
+  # Real-Time WebSocket Sync Server
+  - type: web
+    name: mindloom-sync
+    env: node
+    buildCommand: npm install
+    startCommand: npx tsx server/sync-server.ts
+    envVars:
+      - key: SYNC_PORT
+        value: 10000
