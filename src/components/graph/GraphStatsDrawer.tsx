@@ -139,7 +139,7 @@ export function GraphStatsDrawer({ isOpen, onClose, nodes, edges }: GraphStatsDr
 
       <div className="pt-4 border-t border-slate-800 text-center">
         <p className="text-xs text-slate-500 font-medium">
-          Synapse Real-Time Graph Engine
+          MindLoom Real-Time Graph Engine
         </p>
       </div>
     </div>

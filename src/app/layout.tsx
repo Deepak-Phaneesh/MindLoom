@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Synapse | Real-Time Collaborative Knowledge Graph & Canvas',
+  title: 'MindLoom | Real-Time Collaborative Knowledge Graph & Canvas',
   description: 'A collaborative workspace with real-time multiplayer networking, dynamic knowledge graphs, and AI entity-relation extraction.',
 };
 

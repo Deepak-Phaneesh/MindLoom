@@ -1,4 +1,4 @@
-# Synapse: Real-Time Collaborative Knowledge Graph & Canvas
+# MindLoom: Real-Time Collaborative Knowledge Graph & Canvas
 
 > An interactive, multiplayer workspace (Notion meets Miro) with real-time CRDT synchronization, physics-driven force-directed layouts, and an asynchronous LLM pipeline for dynamic knowledge graph and relationship extraction.
 

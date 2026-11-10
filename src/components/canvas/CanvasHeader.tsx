@@ -48,7 +48,7 @@ export function CanvasHeader({
           <div className="flex items-center gap-2.5">
             <span className="w-2.5 h-2.5 rounded-sm bg-amber-400 shadow-[0_0_8px_#f59e0b]" />
             <span className="text-sm font-extrabold tracking-wider uppercase text-white">
-              SYNAPSE <span className="text-slate-400 font-semibold">// GRAPH STUDIO</span>
+              MINDLOOM <span className="text-slate-400 font-semibold">// GRAPH STUDIO</span>
             </span>
           </div>
 
