@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import mqtt, { MqttClient } from 'mqtt';
 import {
   ReactFlow,
   Background,
@@ -56,8 +57,9 @@ export function CollaborativeCanvas() {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [selectedNode, setSelectedNode] = useState<Node<CanvasNodeData> | null>(null);
 
-  const socketRef = useRef<WebSocket | null>(null);
+  const socketRef = useRef<any>(null);
   const roomName = 'core-architecture';
+  const topic = `mindloom/rooms/${roomName}`;
   const STORAGE_KEY = `mindloom_graph_${roomName}`;
 
   // 1. Load initial graph (Prioritize LocalStorage so edits persist, fallback to seed)
@@ -94,68 +96,90 @@ export function CollaborativeCanvas() {
     loadSeedData();
   }, [setNodes, setEdges, STORAGE_KEY]);
 
-  // 2. Connect to Real-time WebSocket CRDT Server
+  // 2. Connect to Real-time Cloud PubSub Broker (Supports cross-browser live sync on any network/Vercel)
   useEffect(() => {
-    // 1. If explicit env var provided, use it
-    // 2. If running on public internet without custom WS server, use public Yjs WebSocket relay
-    // 3. Otherwise fall back to local dev ws server
-    const isLocalhost = typeof window !== 'undefined' && 
-      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-
-    let wsUrl: string;
-    if (process.env.NEXT_PUBLIC_WS_URL) {
-      wsUrl = process.env.NEXT_PUBLIC_WS_URL.startsWith('ws')
-        ? `${process.env.NEXT_PUBLIC_WS_URL}/${roomName}`
-        : `wss://${process.env.NEXT_PUBLIC_WS_URL}/${roomName}`;
-    } else if (!isLocalhost) {
-      // Use public high-availability free WebSocket relay for production cloud hosting
-      wsUrl = `wss://demos.yjs.dev/ws/${roomName}`;
-    } else {
-      wsUrl = `ws://localhost:1234/${roomName}`;
-    }
-
-    let ws: WebSocket;
+    let client: MqttClient;
 
     try {
-      ws = new WebSocket(wsUrl);
-      socketRef.current = ws;
+      client = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
+        keepalive: 30,
+        clientId: `client_${currentUserId}_${Math.random().toString(16).substring(2, 8)}`,
+        clean: true,
+        reconnectPeriod: 2000,
+      });
 
-      ws.onopen = () => {
+      socketRef.current = client;
+
+      client.on('connect', () => {
         setIsConnected(true);
-        ws.send(
+        client.subscribe(topic, { qos: 0 });
+
+        // Broadcast presence
+        client.publish(
+          topic,
           JSON.stringify({
-            type: 'join',
+            type: 'presence:join',
             userId: currentUserId,
-            userName,
-            userColor,
+            user: {
+              id: currentUserId,
+              name: userName,
+              color: userColor,
+              lastActive: Date.now(),
+            },
           })
         );
-      };
+      });
 
-      ws.onmessage = (event) => {
+      client.on('message', (_t, payload) => {
         try {
-          const msg = JSON.parse(event.data);
+          const msg = JSON.parse(payload.toString());
+
+          // Ignore own messages
+          if (msg.userId === currentUserId || msg.originId === currentUserId) return;
+
           switch (msg.type) {
-            case 'sync:init': {
-              if (Array.isArray(msg.presence)) {
-                setPresences(msg.presence);
+            case 'presence:join':
+            case 'presence:heartbeat': {
+              if (msg.user) {
+                setPresences((prev) => {
+                  const filtered = prev.filter((p) => p.id !== msg.user.id);
+                  return [...filtered, { ...msg.user, lastActive: Date.now() }];
+                });
+
+                // If someone just joined, announce our presence so they see us too
+                if (msg.type === 'presence:join' && client.connected) {
+                  client.publish(
+                    topic,
+                    JSON.stringify({
+                      type: 'presence:heartbeat',
+                      userId: currentUserId,
+                      user: {
+                        id: currentUserId,
+                        name: userName,
+                        color: userColor,
+                        lastActive: Date.now(),
+                      },
+                    })
+                  );
+                }
               }
               break;
             }
-            case 'presence:join': {
-              setPresences((prev) => [...prev.filter((p) => p.id !== msg.user.id), msg.user]);
-              break;
-            }
+
             case 'presence:leave': {
               setPresences((prev) => prev.filter((p) => p.id !== msg.userId));
               break;
             }
+
             case 'cursor:update': {
               setPresences((prev) =>
-                prev.map((p) => (p.id === msg.userId ? { ...p, cursor: msg.cursor } : p))
+                prev.map((p) =>
+                  p.id === msg.userId ? { ...p, cursor: msg.cursor, lastActive: Date.now() } : p
+                )
               );
               break;
             }
+
             case 'graph:update': {
               if (msg.payload?.nodes) {
                 setNodes(msg.payload.nodes);
@@ -169,31 +193,59 @@ export function CollaborativeCanvas() {
               if (msg.payload?.edges) setEdges(msg.payload.edges);
               break;
             }
+
             default:
               break;
           }
-        } catch {
-          // Binary or non-json message
-        }
-      };
+        } catch {}
+      });
 
-      ws.onclose = () => {
-        setIsConnected(false);
-      };
-
-      ws.onerror = () => {
-        setIsConnected(false);
-      };
+      client.on('close', () => setIsConnected(false));
+      client.on('error', () => setIsConnected(false));
+      client.on('offline', () => setIsConnected(false));
     } catch {
       setIsConnected(false);
     }
 
+    // Periodic heartbeat & stale peer cleanup
+    const timer = setInterval(() => {
+      if (client && client.connected) {
+        client.publish(
+          topic,
+          JSON.stringify({
+            type: 'presence:heartbeat',
+            userId: currentUserId,
+            user: {
+              id: currentUserId,
+              name: userName,
+              color: userColor,
+              lastActive: Date.now(),
+            },
+          })
+        );
+      }
+
+      // Cleanup peers silent for > 15 seconds
+      const now = Date.now();
+      setPresences((prev) => prev.filter((p) => now - (p.lastActive || now) < 15000));
+    }, 4000);
+
     return () => {
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.close();
+      clearInterval(timer);
+      if (client) {
+        if (client.connected) {
+          client.publish(
+            topic,
+            JSON.stringify({
+              type: 'presence:leave',
+              userId: currentUserId,
+            })
+          );
+        }
+        client.end(true);
       }
     };
-  }, [currentUserId, userName, userColor, setNodes, setEdges]);
+  }, [currentUserId, userName, userColor, setNodes, setEdges, topic, STORAGE_KEY]);
 
   // Broadcast graph changes to peers and persist locally
   const broadcastGraphSync = useCallback(
@@ -207,33 +259,45 @@ export function CollaborativeCanvas() {
         console.warn('Failed to save to localStorage', e);
       }
 
-      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-        socketRef.current.send(
+      const client = socketRef.current;
+      if (client && client.connected) {
+        client.publish(
+          topic,
           JSON.stringify({
-            type: 'graph:sync',
+            type: 'graph:update',
+            originId: currentUserId,
             payload: { nodes: newNodes, edges: newEdges },
           })
         );
       }
     },
-    [STORAGE_KEY]
+    [STORAGE_KEY, topic, currentUserId]
   );
 
-  // Broadcast cursor movement (canvas coordinates)
+  // Broadcast cursor movement (throttled to 30ms for 60 FPS smooth rendering without network congestion)
+  const lastCursorSendRef = useRef<number>(0);
   const handleMouseMove = useCallback(
     (event: React.MouseEvent) => {
-      if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) return;
+      const now = Date.now();
+      if (now - lastCursorSendRef.current < 35) return;
+      lastCursorSendRef.current = now;
+
+      const client = socketRef.current;
+      if (!client || !client.connected) return;
+
       const x = event.clientX;
       const y = event.clientY;
 
-      socketRef.current.send(
+      client.publish(
+        topic,
         JSON.stringify({
-          type: 'cursor:move',
+          type: 'cursor:update',
+          userId: currentUserId,
           cursor: { x, y },
         })
       );
     },
-    []
+    [topic, currentUserId]
   );
 
   // Connection handler for manual edge creation between nodes
