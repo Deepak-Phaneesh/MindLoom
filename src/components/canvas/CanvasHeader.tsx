@@ -8,8 +8,7 @@ import {
   Plus, 
   Layers, 
   RefreshCw,
-  Boxes,
-  CircleDot
+  Boxes
 } from 'lucide-react';
 
 interface CanvasHeaderProps {
@@ -39,53 +38,59 @@ export function CanvasHeader({
 }: CanvasHeaderProps) {
   return (
     <>
-      {/* Top Studio Telemetry Bar */}
+      {/* Top Header */}
       <header className="absolute top-4 left-5 right-5 z-40 flex items-center justify-between pointer-events-none">
-        {/* Left: Studio Identity & Telemetry */}
-        <div className="pointer-events-auto flex items-center gap-3 glass-panel px-3.5 py-2 rounded-lg">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-sm bg-champagne shadow-[0_0_8px_#e8c88c]" />
-            <span className="font-mono text-[11px] font-bold tracking-[0.16em] uppercase text-[#f1ede6]">
-              SYNAPSE <span className="text-[#8c867a] font-normal">// GRAPH CORE</span>
+        {/* Left: Studio Identity */}
+        <div 
+          className="pointer-events-auto flex items-center gap-3 px-4 py-2.5 rounded-xl border border-slate-700 shadow-xl"
+          style={{ backgroundColor: '#10141d' }}
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-sm bg-amber-400 shadow-[0_0_8px_#f59e0b]" />
+            <span className="text-sm font-extrabold tracking-wider uppercase text-white">
+              SYNAPSE <span className="text-slate-400 font-semibold">// GRAPH STUDIO</span>
             </span>
           </div>
 
-          <div className="w-[1px] h-3.5 bg-white/[0.08]" />
+          <div className="w-[1px] h-4 bg-slate-700" />
 
-          <div className="flex items-center gap-2 font-mono text-[10px] text-[#8c867a]">
-            <span className="uppercase text-champagne/90 tracking-wider">
+          <div className="flex items-center gap-2.5 text-xs text-slate-300 font-medium">
+            <span className="uppercase text-amber-300 font-bold tracking-wider">
               {roomName}
             </span>
-            <span className="text-white/[0.15]">/</span>
-            <div className="flex items-center gap-1.5">
+            <span className="text-slate-600">/</span>
+            <div className="flex items-center gap-1.5 font-bold">
               <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  isConnected ? 'bg-sage animate-pulse' : 'bg-copper'
+                className={`w-2 h-2 rounded-full ${
+                  isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'
                 }`}
               />
-              <span className={isConnected ? 'text-sage-light' : 'text-copper-light'}>
-                {isConnected ? 'LIVE PEERS' : 'OFFLINE'}
+              <span className={isConnected ? 'text-emerald-400' : 'text-rose-400'}>
+                {isConnected ? 'LIVE MULTIPLAYER' : 'STANDALONE'}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Right: Presence Roster & Quick Action */}
-        <div className="pointer-events-auto flex items-center gap-2.5">
+        {/* Right: Presence Roster & Add Note */}
+        <div className="pointer-events-auto flex items-center gap-3">
           {presences.length > 0 && (
-            <div className="flex items-center -space-x-1.5 glass-panel px-2.5 py-1.5 rounded-lg">
+            <div 
+              className="flex items-center -space-x-2 px-3 py-1.5 rounded-xl border border-slate-700 shadow-xl"
+              style={{ backgroundColor: '#10141d' }}
+            >
               {presences.slice(0, 5).map((p) => (
                 <div
                   key={p.id}
-                  className="w-6 h-6 rounded-md flex items-center justify-center font-mono text-[10px] font-bold text-obsidian-950 border border-obsidian-900 shadow-sm"
-                  style={{ backgroundColor: p.color || '#e8c88c' }}
-                  title={`${p.name} (Active)`}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-slate-950 border-2 border-slate-900 shadow-sm"
+                  style={{ backgroundColor: p.color || '#f59e0b' }}
+                  title={`${p.name} (Online)`}
                 >
                   {p.name.charAt(0).toUpperCase()}
                 </div>
               ))}
               {presences.length > 5 && (
-                <div className="w-6 h-6 rounded-md bg-obsidian-800 border border-obsidian-900 flex items-center justify-center font-mono text-[9px] font-bold text-[#d8d2c6]">
+                <div className="w-7 h-7 rounded-lg bg-slate-800 border-2 border-slate-900 flex items-center justify-center text-xs font-bold text-slate-300">
                   +{presences.length - 5}
                 </div>
               )}
@@ -94,76 +99,79 @@ export function CanvasHeader({
 
           <button
             onClick={onAddNode}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-champagne hover:bg-champagne-300 text-obsidian-950 font-mono text-[11px] font-bold tracking-wider uppercase shadow-[0_2px_12px_rgba(232,200,140,0.25)] transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold tracking-wider uppercase shadow-lg shadow-amber-500/20 transition-all hover:scale-105 active:scale-95"
           >
-            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+            <Plus className="w-4 h-4 stroke-[3]" />
             New Note
           </button>
         </div>
       </header>
 
-      {/* Floating Center Bottom Studio Dock */}
+      {/* Floating Bottom Navigation Dock */}
       <nav className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 pointer-events-auto">
-        <div className="glass-panel p-1.5 rounded-xl flex items-center gap-1 shadow-2xl">
-          {/* Mode Switcher Group */}
-          <div className="flex items-center bg-obsidian-950/70 p-0.5 rounded-lg border border-white/[0.04]">
+        <div 
+          className="p-2 rounded-2xl flex items-center gap-2 shadow-2xl border border-slate-700"
+          style={{ backgroundColor: '#10141d' }}
+        >
+          {/* View Mode Switcher */}
+          <div className="flex items-center bg-slate-900/90 p-1 rounded-xl border border-slate-800">
             <button
               onClick={onToggleViewMode}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-mono text-[10px] font-semibold tracking-wider uppercase transition-all ${
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
                 viewMode === 'canvas'
-                  ? 'bg-obsidian-800 text-champagne border border-white/[0.08] shadow-sm'
-                  : 'text-[#8c867a] hover:text-[#d8d2c6]'
+                  ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold'
+                  : 'text-slate-400 hover:text-white'
               }`}
-              title="Freeform Spatial Workspace"
+              title="Freeform 2D Canvas space"
             >
-              <Layers className="w-3 h-3" />
+              <Layers className="w-3.5 h-3.5" />
               Canvas
             </button>
 
             <button
               onClick={onToggleViewMode}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-mono text-[10px] font-semibold tracking-wider uppercase transition-all ${
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
                 viewMode === 'force'
-                  ? 'bg-obsidian-800 text-champagne border border-white/[0.08] shadow-sm'
-                  : 'text-[#8c867a] hover:text-[#d8d2c6]'
+                  ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold'
+                  : 'text-slate-400 hover:text-white'
               }`}
               title="Physics Force-Directed Layout"
             >
-              <Boxes className="w-3 h-3" />
+              <Boxes className="w-3.5 h-3.5" />
               Force Graph
             </button>
           </div>
 
-          <div className="w-[1px] h-4 bg-white/[0.08] mx-1" />
+          <div className="w-[1px] h-6 bg-slate-800 mx-1" />
 
           {/* Auto Layout Action */}
           <button
             onClick={onAutoLayout}
             disabled={isAutoLayoutRunning}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[10px] font-semibold tracking-wider uppercase text-[#a6a094] hover:text-white hover:bg-obsidian-800/80 transition-colors"
-            title="Settle graph using d3-force simulation"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+            title="Auto-arrange nodes using physics simulation"
           >
             <RefreshCw
-              className={`w-3 h-3 ${isAutoLayoutRunning ? 'animate-spin text-champagne' : ''}`}
+              className={`w-3.5 h-3.5 ${isAutoLayoutRunning ? 'animate-spin text-amber-400' : ''}`}
             />
             Auto Arrange
           </button>
 
-          {/* Multi-Hop Path Finder Action */}
+          {/* Path Finder */}
           <button
             onClick={onOpenPathFinder}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-champagne/10 hover:bg-champagne/20 text-champagne border border-champagne/25 font-mono text-[10px] font-semibold tracking-wider uppercase transition-all"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 text-xs font-bold uppercase tracking-wider transition-all"
           >
-            <GitFork className="w-3 h-3 text-champagne" />
+            <GitFork className="w-4 h-4 text-amber-400" />
             Path Explorer
           </button>
 
-          {/* Graph Telemetry Drawer */}
+          {/* Metrics Drawer */}
           <button
             onClick={onOpenStats}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[10px] font-semibold tracking-wider uppercase text-[#a6a094] hover:text-white hover:bg-obsidian-800/80 transition-colors"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
           >
-            <BarChart3 className="w-3 h-3 text-azure-light" />
+            <BarChart3 className="w-4 h-4 text-sky-400" />
             Metrics
           </button>
         </div>

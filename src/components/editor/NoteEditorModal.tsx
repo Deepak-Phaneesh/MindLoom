@@ -128,7 +128,7 @@ export function NoteEditorModal({
 
           const newId = `node-ai-${Date.now()}-${idx}`;
           const angle = (idx / extractedRelations.length) * 2 * Math.PI;
-          const radius = 280;
+          const radius = 320;
 
           const createdNode: Node<CanvasNodeData> = {
             id: newId,
@@ -169,86 +169,91 @@ export function NoteEditorModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-obsidian-950/70 backdrop-blur-md animate-in fade-in duration-150">
-      <div className="w-full max-w-2xl bg-obsidian-900 border border-white/[0.08] rounded-xl shadow-[0_24px_60px_-12px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
+      <div 
+        className="w-full max-w-2xl rounded-2xl border-2 border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        style={{ backgroundColor: '#0f131a' }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/[0.06] bg-obsidian-950/40">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-md bg-champagne/10 text-champagne border border-champagne/20">
-              <Layers className="w-3.5 h-3.5" />
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-[#0a0d13]">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40">
+              <Layers className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-xs font-mono font-bold tracking-[0.14em] uppercase text-[#f1ede6]">
-                {node ? 'Edit Concept Node' : 'Initialize Knowledge Node'}
+              <h2 className="text-base font-bold text-white tracking-wide">
+                {node ? 'Edit Concept Node' : 'Create Knowledge Node'}
               </h2>
-              <p className="text-[11px] font-sans text-[#8c867a]">
-                Document components and run background knowledge relationship extraction
+              <p className="text-xs text-slate-400">
+                Document architecture and trigger automated relationship extraction
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-md text-[#8c867a] hover:text-white hover:bg-obsidian-800 transition-colors"
+            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content Form */}
-        <div className="p-5 overflow-y-auto space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="p-6 overflow-y-auto space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-[10px] font-mono font-semibold uppercase tracking-wider text-[#8c867a] mb-1">
-                Node Title // Identifier
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                Node Title / Name
               </label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Distributed Consensus Engine"
-                className="w-full px-3 py-2 bg-obsidian-950 border border-white/[0.08] rounded-lg text-xs font-mono text-[#f1ede6] placeholder:text-[#504c45] focus:outline-none focus:border-champagne/60"
+                style={{ backgroundColor: '#141822', color: '#ffffff' }}
+                className="w-full px-4 py-3 rounded-xl border border-slate-700 text-sm font-semibold text-white placeholder-slate-500 focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
               />
             </div>
 
             <div>
-              <label className="block text-[10px] font-mono font-semibold uppercase tracking-wider text-[#8c867a] mb-1">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
                 Taxonomy Type
               </label>
               <select
                 value={nodeType}
                 onChange={(e) => setNodeType(e.target.value as NodeType)}
-                className="w-full px-3 py-2 bg-obsidian-950 border border-white/[0.08] rounded-lg text-xs font-mono text-[#f1ede6] focus:outline-none focus:border-champagne/60"
+                style={{ backgroundColor: '#141822', color: '#ffffff' }}
+                className="w-full px-4 py-3 rounded-xl border border-slate-700 text-sm font-semibold text-white focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
               >
-                <option value="concept">Concept (Core)</option>
-                <option value="service">Service (System)</option>
-                <option value="database">Database (Storage)</option>
-                <option value="api">API Endpoint (Network)</option>
-                <option value="note">General Note (Doc)</option>
-                <option value="person">Person / Team (Auth)</option>
+                <option value="concept">Concept</option>
+                <option value="service">Service</option>
+                <option value="database">Database</option>
+                <option value="api">API Gateway</option>
+                <option value="note">Documentation</option>
+                <option value="person">Team / Auth</option>
               </select>
             </div>
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-[10px] font-mono font-semibold uppercase tracking-wider text-[#8c867a]">
-                Architectural Content // Markdown
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
+                Note Content (Markdown & Concepts)
               </label>
               <button
                 type="button"
                 onClick={handleRunAiExtraction}
                 disabled={isExtracting || (!title.trim() && !content.trim())}
-                className="flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-champagne hover:text-champagne-300 transition-colors disabled:opacity-40"
+                className="flex items-center gap-1.5 text-xs font-bold text-amber-300 hover:text-amber-200 transition-colors disabled:opacity-40"
               >
                 {isExtracting ? (
                   <>
-                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
                     Extracting Knowledge...
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-3 h-3 text-champagne" />
-                    Analyze Entities & Relations
+                    <Sparkles className="w-4 h-4 text-amber-400" />
+                    Run AI Entity Extraction
                   </>
                 )}
               </button>
@@ -256,58 +261,63 @@ export function NoteEditorModal({
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              rows={5}
-              placeholder="Explain how this node functions, its protocol dependencies, caches, and database integrations..."
-              className="w-full px-3 py-2 bg-obsidian-950 border border-white/[0.08] rounded-lg text-xs font-mono text-[#f1ede6] placeholder:text-[#504c45] focus:outline-none focus:border-champagne/60 resize-none leading-relaxed"
+              rows={6}
+              placeholder="Describe what this component does, what it communicates with, what databases it queries..."
+              style={{ backgroundColor: '#141822', color: '#ffffff' }}
+              className="w-full px-4 py-3 rounded-xl border border-slate-700 text-sm text-white placeholder-slate-500 leading-relaxed focus:border-amber-400 focus:ring-1 focus:ring-amber-400 resize-none font-mono"
             />
           </div>
 
           <div>
-            <label className="block text-[10px] font-mono font-semibold uppercase tracking-wider text-[#8c867a] mb-1">
-              Tags (comma-separated)
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+              Tags (comma separated)
             </label>
             <input
               type="text"
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
-              placeholder="Real-time, WebSocket, High-Concurrency"
-              className="w-full px-3 py-2 bg-obsidian-950 border border-white/[0.08] rounded-lg text-xs font-mono text-[#f1ede6] placeholder:text-[#504c45] focus:outline-none focus:border-champagne/60"
+              placeholder="Real-time, High-Throughput, Distributed"
+              style={{ backgroundColor: '#141822', color: '#ffffff' }}
+              className="w-full px-4 py-3 rounded-xl border border-slate-700 text-sm font-semibold text-white placeholder-slate-500 focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
             />
           </div>
 
           {/* AI Extracted Discoveries Preview */}
           {(extractedEntities.length > 0 || extractedRelations.length > 0) && (
-            <div className="p-3.5 rounded-lg bg-obsidian-950 border border-champagne/20 space-y-2.5">
+            <div 
+              className="p-4 rounded-xl border border-amber-500/40 space-y-3"
+              style={{ backgroundColor: '#141822' }}
+            >
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 font-mono text-[10px] font-bold text-champagne uppercase tracking-wider">
-                  <Sparkles className="w-3 h-3 text-champagne" />
-                  Extracted Discoveries
+                <div className="flex items-center gap-2 text-xs font-bold text-amber-300 uppercase tracking-wide">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  Extracted Entities & Relationships
                 </div>
-                <label className="flex items-center gap-1.5 font-sans text-[11px] text-[#a6a094] cursor-pointer select-none">
+                <label className="flex items-center gap-2 text-xs text-slate-300 font-medium cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={autoLinkToCanvas}
                     onChange={(e) => setAutoLinkToCanvas(e.target.checked)}
-                    className="rounded border-white/10 bg-obsidian-950 text-champagne focus:ring-champagne/40"
+                    className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-amber-400"
                   />
-                  Auto-spawn nodes & link on Canvas
+                  Auto-spawn nodes & link on canvas
                 </label>
               </div>
 
               {extractedEntities.length > 0 && (
                 <div>
-                  <span className="font-mono text-[9px] uppercase tracking-wider text-[#8c867a] block mb-1">
+                  <span className="text-xs font-bold text-slate-400 block mb-1.5">
                     Detected Entities:
                   </span>
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-1.5">
                     {extractedEntities.map((ent, i) => (
                       <span
                         key={i}
-                        className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-obsidian-800 text-[#d8d2c6] border border-white/[0.06] flex items-center gap-1"
+                        className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 text-white font-medium border border-slate-700 flex items-center gap-1.5"
                       >
-                        <span className="w-1 h-1 rounded-full bg-champagne" />
+                        <span className="w-2 h-2 rounded-full bg-amber-400" />
                         {ent.name}{' '}
-                        <span className="text-[9px] text-[#8c867a]">({ent.type})</span>
+                        <span className="text-slate-400 text-[11px]">({ent.type})</span>
                       </span>
                     ))}
                   </div>
@@ -316,20 +326,20 @@ export function NoteEditorModal({
 
               {extractedRelations.length > 0 && (
                 <div>
-                  <span className="font-mono text-[9px] uppercase tracking-wider text-[#8c867a] block mb-1">
-                    Semantic Connections:
+                  <span className="text-xs font-bold text-slate-400 block mb-1.5">
+                    Discovered Connections:
                   </span>
-                  <div className="space-y-1 font-mono text-[10px]">
+                  <div className="space-y-1.5 text-xs">
                     {extractedRelations.map((rel, i) => (
                       <div
                         key={i}
-                        className="text-[#d8d2c6] flex items-center gap-2 p-1.5 rounded bg-obsidian-900 border border-white/[0.04]"
+                        className="text-slate-200 flex items-center gap-2 p-2 rounded-lg bg-[#0f131a] border border-slate-800 font-mono"
                       >
-                        <Share2 className="w-3 h-3 text-champagne shrink-0" />
+                        <Share2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                         <span>
-                          <strong>{rel.source}</strong> ➔{' '}
-                          <span className="text-champagne font-bold">[{rel.relation}]</span> ➔{' '}
-                          <strong>{rel.target}</strong>
+                          <strong className="text-white">{rel.source}</strong> ➔{' '}
+                          <span className="text-amber-400 font-bold">[{rel.relation}]</span> ➔{' '}
+                          <strong className="text-white">{rel.target}</strong>
                         </span>
                       </div>
                     ))}
@@ -341,11 +351,11 @@ export function NoteEditorModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2.5 px-5 py-3.5 border-t border-white/[0.06] bg-obsidian-950/40">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-800 bg-[#0a0d13]">
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 rounded-lg font-mono text-[10px] uppercase tracking-wider font-semibold text-[#8c867a] hover:text-white transition-colors"
+            className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-white transition-colors"
           >
             Cancel
           </button>
@@ -353,10 +363,10 @@ export function NoteEditorModal({
             type="button"
             onClick={handleSave}
             disabled={!title.trim()}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-champagne hover:bg-champagne-300 text-obsidian-950 font-mono text-[10px] font-bold tracking-wider uppercase transition-all shadow-[0_0_12px_rgba(232,200,140,0.2)] disabled:opacity-40"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold uppercase tracking-wider shadow-lg shadow-amber-500/20 transition-all hover:scale-105 active:scale-95 disabled:opacity-40"
           >
-            <Save className="w-3.5 h-3.5" />
-            Commit to Graph
+            <Save className="w-4 h-4" />
+            Save & Update Graph
           </button>
         </div>
       </div>

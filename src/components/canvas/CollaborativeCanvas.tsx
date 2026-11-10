@@ -353,8 +353,8 @@ export function CollaborativeCanvas() {
         <Background
           variant={BackgroundVariant.Dots}
           gap={28}
-          size={1}
-          color="rgba(232, 200, 140, 0.08)"
+          size={1.5}
+          color="#222b3d"
         />
         <Controls
           className="!glass-panel !rounded-lg !p-1 overflow-hidden [&>button]:!bg-transparent [&>button]:!border-none [&>button]:!text-[#a6a094] hover:[&>button]:!bg-obsidian-800"
