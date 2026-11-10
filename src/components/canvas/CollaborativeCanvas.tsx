@@ -58,9 +58,24 @@ export function CollaborativeCanvas() {
 
   const socketRef = useRef<WebSocket | null>(null);
   const roomName = 'core-architecture';
+  const STORAGE_KEY = `mindloom_graph_${roomName}`;
 
-  // 1. Load initial seed graph
+  // 1. Load initial graph (Prioritize LocalStorage so edits persist, fallback to seed)
   useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.nodes && parsed.nodes.length > 0) {
+          setNodes(parsed.nodes);
+          setEdges(parsed.edges || []);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Could not read from localStorage', e);
+    }
+
     async function loadSeedData() {
       try {
         const res = await fetch('/api/graph/seed');
@@ -68,13 +83,16 @@ export function CollaborativeCanvas() {
           const data = await res.json();
           setNodes(data.nodes || []);
           setEdges(data.edges || []);
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+          } catch {}
         }
       } catch (err) {
         console.error('Failed to load seed graph:', err);
       }
     }
     loadSeedData();
-  }, [setNodes, setEdges]);
+  }, [setNodes, setEdges, STORAGE_KEY]);
 
   // 2. Connect to Real-time WebSocket CRDT Server
   useEffect(() => {
@@ -139,7 +157,15 @@ export function CollaborativeCanvas() {
               break;
             }
             case 'graph:update': {
-              if (msg.payload?.nodes) setNodes(msg.payload.nodes);
+              if (msg.payload?.nodes) {
+                setNodes(msg.payload.nodes);
+                try {
+                  localStorage.setItem(
+                    STORAGE_KEY,
+                    JSON.stringify({ nodes: msg.payload.nodes, edges: msg.payload.edges || [] })
+                  );
+                } catch {}
+              }
               if (msg.payload?.edges) setEdges(msg.payload.edges);
               break;
             }
@@ -169,9 +195,18 @@ export function CollaborativeCanvas() {
     };
   }, [currentUserId, userName, userColor, setNodes, setEdges]);
 
-  // Broadcast graph changes to peers
+  // Broadcast graph changes to peers and persist locally
   const broadcastGraphSync = useCallback(
     (newNodes: Node<CanvasNodeData>[], newEdges: Edge<CanvasEdgeData>[]) => {
+      try {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({ nodes: newNodes, edges: newEdges })
+        );
+      } catch (e) {
+        console.warn('Failed to save to localStorage', e);
+      }
+
       if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
         socketRef.current.send(
           JSON.stringify({
@@ -181,7 +216,7 @@ export function CollaborativeCanvas() {
         );
       }
     },
-    []
+    [STORAGE_KEY]
   );
 
   // Broadcast cursor movement (canvas coordinates)
