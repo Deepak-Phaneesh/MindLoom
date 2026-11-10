@@ -32,7 +32,8 @@ import { calculateForceLayout } from '@/lib/graph/layout';
 const nodeTypes: NodeTypes = { knowledgeNode: KnowledgeNode as any };
 const edgeTypes: EdgeTypes = { relationEdge: RelationEdge as any };
 
-const RANDOM_COLORS = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#06b6d4', '#8b5cf6'];
+// Bespoke Studio Color Palette for Collaborators
+const STUDIO_COLORS = ['#e8c88c', '#529471', '#c67d5a', '#3e829a', '#e65440', '#edd19c'];
 
 export function CollaborativeCanvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<CanvasNodeData>>([]);
@@ -46,8 +47,8 @@ export function CollaborativeCanvas() {
   const [presences, setPresences] = useState<UserPresence[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [currentUserId] = useState(() => `user-${Math.random().toString(36).substring(2, 7)}`);
-  const [userName] = useState(() => `User ${Math.floor(Math.random() * 900 + 100)}`);
-  const [userColor] = useState(() => RANDOM_COLORS[Math.floor(Math.random() * RANDOM_COLORS.length)]);
+  const [userName] = useState(() => `ARCHITECT_${Math.floor(Math.random() * 900 + 100)}`);
+  const [userColor] = useState(() => STUDIO_COLORS[Math.floor(Math.random() * STUDIO_COLORS.length)]);
 
   // Modals state
   const [isPathFinderOpen, setIsPathFinderOpen] = useState(false);
@@ -56,7 +57,7 @@ export function CollaborativeCanvas() {
   const [selectedNode, setSelectedNode] = useState<Node<CanvasNodeData> | null>(null);
 
   const socketRef = useRef<WebSocket | null>(null);
-  const roomName = 'arch-knowledge-room';
+  const roomName = 'core-architecture';
 
   // 1. Load initial seed graph
   useEffect(() => {
@@ -215,7 +216,7 @@ export function CollaborativeCanvas() {
     []
   );
 
-  // Save Node from Editor (with dynamically spawned entities & edges)
+  // Save Node from Editor
   const handleSaveNode = useCallback(
     (
       updatedNode: Node<CanvasNodeData>,
@@ -251,9 +252,9 @@ export function CollaborativeCanvas() {
       broadcastGraphSync(arranged, edges);
       setIsAutoLayoutRunning(false);
       if (rfInstance) {
-        rfInstance.fitView({ duration: 800 });
+        rfInstance.fitView({ duration: 600 });
       }
-    }, 50);
+    }, 40);
   }, [nodes, edges, setNodes, broadcastGraphSync, rfInstance]);
 
   // Toggle View Mode
@@ -309,7 +310,7 @@ export function CollaborativeCanvas() {
 
   return (
     <div
-      className="relative w-screen h-screen bg-[#090d16] overflow-hidden select-none"
+      className="relative w-screen h-screen canvas-backdrop overflow-hidden select-none"
       onMouseMove={handleMouseMove}
     >
       {/* Top Header & Navigation */}
@@ -349,15 +350,27 @@ export function CollaborativeCanvas() {
         defaultEdgeOptions={{ type: 'relationEdge' }}
         proOptions={{ hideAttribution: true }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={24} size={1.2} color="#1e293b" />
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={28}
+          size={1}
+          color="rgba(232, 200, 140, 0.08)"
+        />
         <Controls
-          className="!bg-slate-900/90 !border !border-slate-800 !rounded-2xl !p-1 !shadow-2xl overflow-hidden [&>button]:!bg-transparent [&>button]:!border-none [&>button]:!text-slate-300 hover:[&>button]:!bg-slate-800"
+          className="!glass-panel !rounded-lg !p-1 overflow-hidden [&>button]:!bg-transparent [&>button]:!border-none [&>button]:!text-[#a6a094] hover:[&>button]:!bg-obsidian-800"
           showInteractive={false}
         />
         <MiniMap
-          nodeColor={(node: any) => node.data?.color || '#6366f1'}
-          maskColor="rgba(9, 13, 22, 0.75)"
-          className="!bg-slate-900/80 !border !border-slate-800 !rounded-2xl !shadow-2xl overflow-hidden"
+          nodeColor={(node: any) => {
+            const type = node.data?.nodeType;
+            if (type === 'service') return '#e65440';
+            if (type === 'database') return '#3e829a';
+            if (type === 'concept') return '#e8c88c';
+            if (type === 'api') return '#c67d5a';
+            return '#529471';
+          }}
+          maskColor="rgba(7, 8, 10, 0.85)"
+          className="!glass-panel !rounded-lg overflow-hidden !border-white/[0.06]"
           zoomable
           pannable
         />

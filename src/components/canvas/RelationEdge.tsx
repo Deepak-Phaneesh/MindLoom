@@ -10,13 +10,48 @@ import {
 } from '@xyflow/react';
 import { CanvasEdgeData, RelationType } from '@/lib/graph/types';
 
-const relationColors: Record<RelationType, { stroke: string; bg: string; text: string }> = {
-  depends_on: { stroke: '#ef4444', bg: 'bg-red-950/80', text: 'text-red-300' },
-  communicates_with: { stroke: '#8b5cf6', bg: 'bg-purple-950/80', text: 'text-purple-300' },
-  implements: { stroke: '#3b82f6', bg: 'bg-blue-950/80', text: 'text-blue-300' },
-  subconcept_of: { stroke: '#ec4899', bg: 'bg-pink-950/80', text: 'text-pink-300' },
-  stores_in: { stroke: '#06b6d4', bg: 'bg-cyan-950/80', text: 'text-cyan-300' },
-  relates_to: { stroke: '#64748b', bg: 'bg-slate-800/80', text: 'text-slate-300' },
+const relationThemes: Record<RelationType, {
+  stroke: string;
+  badgeBg: string;
+  badgeText: string;
+  badgeBorder: string;
+}> = {
+  depends_on: {
+    stroke: '#e65440',
+    badgeBg: 'bg-[#1e1312]',
+    badgeText: 'text-[#ff9282]',
+    badgeBorder: 'border-[#e65440]/30',
+  },
+  communicates_with: {
+    stroke: '#e8c88c',
+    badgeBg: 'bg-[#1b1710]',
+    badgeText: 'text-champagne',
+    badgeBorder: 'border-champagne/30',
+  },
+  implements: {
+    stroke: '#c67d5a',
+    badgeBg: 'bg-[#1c1410]',
+    badgeText: 'text-copper-light',
+    badgeBorder: 'border-copper/30',
+  },
+  subconcept_of: {
+    stroke: '#529471',
+    badgeBg: 'bg-[#111914]',
+    badgeText: 'text-sage-light',
+    badgeBorder: 'border-sage/30',
+  },
+  stores_in: {
+    stroke: '#3e829a',
+    badgeBg: 'bg-[#0f191e]',
+    badgeText: 'text-azure-light',
+    badgeBorder: 'border-azure/30',
+  },
+  relates_to: {
+    stroke: '#6a655d',
+    badgeBg: 'bg-[#15161a]',
+    badgeText: 'text-[#b0aaa0]',
+    badgeBorder: 'border-white/[0.08]',
+  },
 };
 
 function RelationEdgeComponent({
@@ -42,15 +77,16 @@ function RelationEdgeComponent({
 
   const isHighlighted = data?.highlighted;
   const relation = data?.relation || 'relates_to';
-  const colorConfig = relationColors[relation] || relationColors.relates_to;
+  const theme = relationThemes[relation] || relationThemes.relates_to;
   const label = data?.label || relation.replace('_', ' ');
 
   const edgeStyle = {
     ...style,
-    stroke: isHighlighted ? '#f59e0b' : colorConfig.stroke,
-    strokeWidth: isHighlighted ? 3.5 : 2,
-    opacity: isHighlighted ? 1 : 0.75,
-    strokeDasharray: relation === 'communicates_with' ? '5,5' : undefined,
+    stroke: isHighlighted ? '#e8c88c' : theme.stroke,
+    strokeWidth: isHighlighted ? 2.8 : 1.4,
+    opacity: isHighlighted ? 1 : 0.65,
+    strokeDasharray: relation === 'communicates_with' ? '4,4' : undefined,
+    filter: isHighlighted ? 'drop-shadow(0 0 6px rgba(232,200,140,0.6))' : undefined,
   };
 
   return (
@@ -63,10 +99,10 @@ function RelationEdgeComponent({
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             pointerEvents: 'all',
           }}
-          className={`px-2 py-0.5 rounded-full text-[10px] font-medium tracking-wide border shadow-md transition-all cursor-pointer select-none backdrop-blur-md ${
+          className={`font-mono text-[9px] uppercase tracking-[0.14em] px-2 py-0.5 rounded transition-all cursor-pointer select-none backdrop-blur-md border ${
             isHighlighted
-              ? 'bg-amber-500 text-slate-950 border-amber-300 scale-110 font-bold ring-2 ring-amber-400/50'
-              : `${colorConfig.bg} ${colorConfig.text} border-slate-700/60 hover:scale-105`
+              ? 'bg-champagne text-obsidian-950 border-champagne font-bold shadow-[0_0_16px_rgba(232,200,140,0.6)] scale-110'
+              : `${theme.badgeBg} ${theme.badgeText} ${theme.badgeBorder} hover:scale-105 hover:border-champagne/40`
           }`}
           title={data?.explanation || label}
         >

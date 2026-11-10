@@ -7,10 +7,15 @@ const CollaborativeCanvas = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex flex-col items-center justify-center w-screen h-screen bg-[#090d16] text-slate-300">
-        <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-sm font-medium tracking-wide text-slate-400">
-          Initializing Synapse Collaborative Graph Canvas...
+      <div className="flex flex-col items-center justify-center w-screen h-screen bg-[#07080a] text-[#f1ede6]">
+        <div className="relative w-8 h-8 mb-4">
+          <div className="absolute inset-0 rounded-sm border border-champagne/40 animate-ping" />
+          <div className="w-8 h-8 rounded-sm bg-obsidian-900 border border-champagne flex items-center justify-center font-mono text-[10px] text-champagne font-bold">
+            S
+          </div>
+        </div>
+        <p className="font-mono text-xs tracking-[0.16em] uppercase text-[#8c867a]">
+          SYNAPSE // INITIALIZING GRAPH CORE...
         </p>
       </div>
     ),
