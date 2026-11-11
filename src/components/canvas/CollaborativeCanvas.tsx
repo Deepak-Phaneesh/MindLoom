@@ -40,6 +40,12 @@ export function CollaborativeCanvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<CanvasNodeData>>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge<CanvasEdgeData>>([]);
 
+  // Use refs to prevent stale closure issues in real-time callbacks
+  const nodesRef = useRef<Node<CanvasNodeData>[]>([]);
+  const edgesRef = useRef<Edge<CanvasEdgeData>[]>([]);
+  nodesRef.current = nodes;
+  edgesRef.current = edges;
+
   const [rfInstance, setRfInstance] = useState<ReactFlowInstance<Node<CanvasNodeData>, Edge<CanvasEdgeData>> | null>(null);
   const [viewMode, setViewMode] = useState<'canvas' | 'force'>('canvas');
   const [isAutoLayoutRunning, setIsAutoLayoutRunning] = useState(false);
@@ -62,7 +68,7 @@ export function CollaborativeCanvas() {
   const topic = `mindloom/rooms/${roomName}`;
   const STORAGE_KEY = `mindloom_graph_${roomName}`;
 
-  // 1. Load initial graph (Prioritize LocalStorage so edits persist, fallback to seed)
+  // 1. Load initial graph (Prioritize LocalStorage, fallback to seed)
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -96,14 +102,65 @@ export function CollaborativeCanvas() {
     loadSeedData();
   }, [setNodes, setEdges, STORAGE_KEY]);
 
-  // 2. Connect to Real-time Cloud PubSub Broker (Supports cross-browser live sync on any network/Vercel)
+  // Broadcast graph changes to peers and persist locally
+  const broadcastGraphSync = useCallback(
+    (newNodes: Node<CanvasNodeData>[], newEdges: Edge<CanvasEdgeData>[]) => {
+      try {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({ nodes: newNodes, edges: newEdges })
+        );
+      } catch (e) {
+        console.warn('Failed to save to localStorage', e);
+      }
+
+      const client = socketRef.current;
+      if (client && client.connected) {
+        client.publish(
+          topic,
+          JSON.stringify({
+            type: 'graph:update',
+            originId: currentUserId,
+            payload: { nodes: newNodes, edges: newEdges },
+          })
+        );
+      }
+    },
+    [STORAGE_KEY, topic, currentUserId]
+  );
+
+  // Broadcast single node drag movement (throttled)
+  const lastDragSendRef = useRef<number>(0);
+  const broadcastNodeDrag = useCallback(
+    (nodeId: string, position: { x: number; y: number }) => {
+      const now = Date.now();
+      if (now - lastDragSendRef.current < 40) return;
+      lastDragSendRef.current = now;
+
+      const client = socketRef.current;
+      if (client && client.connected) {
+        client.publish(
+          topic,
+          JSON.stringify({
+            type: 'node:move',
+            originId: currentUserId,
+            nodeId,
+            position,
+          })
+        );
+      }
+    },
+    [topic, currentUserId]
+  );
+
+  // 2. Connect to Real-time Cloud PubSub Broker (Supports cross-browser live sync)
   useEffect(() => {
     let client: MqttClient;
 
     try {
       client = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
         keepalive: 30,
-        clientId: `client_${currentUserId}_${Math.random().toString(16).substring(2, 8)}`,
+        clientId: `mindloom_${currentUserId}_${Math.random().toString(16).substring(2, 8)}`,
         clean: true,
         reconnectPeriod: 2000,
       });
@@ -114,7 +171,7 @@ export function CollaborativeCanvas() {
         setIsConnected(true);
         client.subscribe(topic, { qos: 0 });
 
-        // Broadcast presence
+        // Broadcast presence announcement
         client.publish(
           topic,
           JSON.stringify({
@@ -128,16 +185,40 @@ export function CollaborativeCanvas() {
             },
           })
         );
+
+        // Ask existing peers in the room for their current live graph state
+        client.publish(
+          topic,
+          JSON.stringify({
+            type: 'graph:request_sync',
+            requesterId: currentUserId,
+          })
+        );
       });
 
       client.on('message', (_t, payload) => {
         try {
           const msg = JSON.parse(payload.toString());
 
-          // Ignore own messages
+          // Ignore own outgoing messages
           if (msg.userId === currentUserId || msg.originId === currentUserId) return;
 
           switch (msg.type) {
+            case 'graph:request_sync': {
+              // A new peer joined the room! Send them our current live canvas
+              if (nodesRef.current.length > 0 && client.connected) {
+                client.publish(
+                  topic,
+                  JSON.stringify({
+                    type: 'graph:update',
+                    originId: currentUserId,
+                    payload: { nodes: nodesRef.current, edges: edgesRef.current },
+                  })
+                );
+              }
+              break;
+            }
+
             case 'presence:join':
             case 'presence:heartbeat': {
               if (msg.user) {
@@ -146,7 +227,7 @@ export function CollaborativeCanvas() {
                   return [...filtered, { ...msg.user, lastActive: Date.now() }];
                 });
 
-                // If someone just joined, announce our presence so they see us too
+                // If someone just joined, reply with our presence so both see each other
                 if (msg.type === 'presence:join' && client.connected) {
                   client.publish(
                     topic,
@@ -180,9 +261,20 @@ export function CollaborativeCanvas() {
               break;
             }
 
+            case 'node:move': {
+              // Remote peer dragged a node
+              if (msg.nodeId && msg.position) {
+                setNodes((prev) =>
+                  prev.map((n) => (n.id === msg.nodeId ? { ...n, position: msg.position } : n))
+                );
+              }
+              break;
+            }
+
             case 'graph:update': {
               if (msg.payload?.nodes) {
                 setNodes(msg.payload.nodes);
+                nodesRef.current = msg.payload.nodes;
                 try {
                   localStorage.setItem(
                     STORAGE_KEY,
@@ -190,7 +282,10 @@ export function CollaborativeCanvas() {
                   );
                 } catch {}
               }
-              if (msg.payload?.edges) setEdges(msg.payload.edges);
+              if (msg.payload?.edges) {
+                setEdges(msg.payload.edges);
+                edgesRef.current = msg.payload.edges;
+              }
               break;
             }
 
@@ -247,34 +342,7 @@ export function CollaborativeCanvas() {
     };
   }, [currentUserId, userName, userColor, setNodes, setEdges, topic, STORAGE_KEY]);
 
-  // Broadcast graph changes to peers and persist locally
-  const broadcastGraphSync = useCallback(
-    (newNodes: Node<CanvasNodeData>[], newEdges: Edge<CanvasEdgeData>[]) => {
-      try {
-        localStorage.setItem(
-          STORAGE_KEY,
-          JSON.stringify({ nodes: newNodes, edges: newEdges })
-        );
-      } catch (e) {
-        console.warn('Failed to save to localStorage', e);
-      }
-
-      const client = socketRef.current;
-      if (client && client.connected) {
-        client.publish(
-          topic,
-          JSON.stringify({
-            type: 'graph:update',
-            originId: currentUserId,
-            payload: { nodes: newNodes, edges: newEdges },
-          })
-        );
-      }
-    },
-    [STORAGE_KEY, topic, currentUserId]
-  );
-
-  // Broadcast cursor movement (throttled to 30ms for 60 FPS smooth rendering without network congestion)
+  // Broadcast cursor movement (throttled to 35ms)
   const lastCursorSendRef = useRef<number>(0);
   const handleMouseMove = useCallback(
     (event: React.MouseEvent) => {
@@ -300,6 +368,19 @@ export function CollaborativeCanvas() {
     [topic, currentUserId]
   );
 
+  // Dragging event handlers
+  const onNodeDrag = useCallback(
+    (_: MouseEvent | TouchEvent, node: Node) => {
+      broadcastNodeDrag(node.id, node.position);
+    },
+    [broadcastNodeDrag]
+  );
+
+  const onNodeDragStop = useCallback(() => {
+    // Final position settled -> broadcast full update to ensure state alignment
+    broadcastGraphSync(nodesRef.current, edgesRef.current);
+  }, [broadcastGraphSync]);
+
   // Connection handler for manual edge creation between nodes
   const onConnect = useCallback(
     (params: Connection) => {
@@ -310,17 +391,40 @@ export function CollaborativeCanvas() {
         data: {
           relation: 'relates_to',
           label: 'relates to',
-          explanation: 'User established relationship',
+          explanation: 'Connected by collaborator',
         },
       } as Edge<CanvasEdgeData>;
 
-      setEdges((eds) => {
-        const next = addEdge(newEdge, eds);
-        broadcastGraphSync(nodes, next);
-        return next;
-      });
+      const nextEdges = addEdge(newEdge, edgesRef.current);
+      setEdges(nextEdges);
+      broadcastGraphSync(nodesRef.current, nextEdges);
     },
-    [setEdges, broadcastGraphSync, nodes]
+    [setEdges, broadcastGraphSync]
+  );
+
+  // Deletion handlers
+  const onNodesDelete = useCallback(
+    (deleted: Node[]) => {
+      const deletedIds = new Set(deleted.map((n) => n.id));
+      const remainingNodes = nodesRef.current.filter((n) => !deletedIds.has(n.id));
+      const remainingEdges = edgesRef.current.filter(
+        (e) => !deletedIds.has(e.source) && !deletedIds.has(e.target)
+      );
+      setNodes(remainingNodes);
+      setEdges(remainingEdges);
+      broadcastGraphSync(remainingNodes, remainingEdges);
+    },
+    [setNodes, setEdges, broadcastGraphSync]
+  );
+
+  const onEdgesDelete = useCallback(
+    (deleted: Edge[]) => {
+      const deletedIds = new Set(deleted.map((e) => e.id));
+      const remainingEdges = edgesRef.current.filter((e) => !deletedIds.has(e.id));
+      setEdges(remainingEdges);
+      broadcastGraphSync(nodesRef.current, remainingEdges);
+    },
+    [setEdges, broadcastGraphSync]
   );
 
   // Node Click: open inspector/editor
@@ -339,22 +443,20 @@ export function CollaborativeCanvas() {
       newNodesToAdd: Node<CanvasNodeData>[] = [],
       newEdgesToAdd: Edge<CanvasEdgeData>[] = []
     ) => {
-      setNodes((currentNodes) => {
-        const exists = currentNodes.some((n) => n.id === updatedNode.id);
-        const updated = exists
-          ? currentNodes.map((n) => (n.id === updatedNode.id ? updatedNode : n))
-          : [...currentNodes, updatedNode];
+      const currentNodes = nodesRef.current;
+      const currentEdges = edgesRef.current;
 
-        const combinedNodes = [...updated, ...newNodesToAdd];
+      const exists = currentNodes.some((n) => n.id === updatedNode.id);
+      const updated = exists
+        ? currentNodes.map((n) => (n.id === updatedNode.id ? updatedNode : n))
+        : [...currentNodes, updatedNode];
 
-        setEdges((currentEdges) => {
-          const combinedEdges = [...currentEdges, ...newEdgesToAdd];
-          broadcastGraphSync(combinedNodes, combinedEdges);
-          return combinedEdges;
-        });
+      const combinedNodes = [...updated, ...newNodesToAdd];
+      const combinedEdges = [...currentEdges, ...newEdgesToAdd];
 
-        return combinedNodes;
-      });
+      setNodes(combinedNodes);
+      setEdges(combinedEdges);
+      broadcastGraphSync(combinedNodes, combinedEdges);
     },
     [setNodes, setEdges, broadcastGraphSync]
   );
@@ -363,15 +465,15 @@ export function CollaborativeCanvas() {
   const handleAutoLayout = useCallback(() => {
     setIsAutoLayoutRunning(true);
     setTimeout(() => {
-      const arranged = calculateForceLayout(nodes, edges);
+      const arranged = calculateForceLayout(nodesRef.current, edgesRef.current);
       setNodes(arranged);
-      broadcastGraphSync(arranged, edges);
+      broadcastGraphSync(arranged, edgesRef.current);
       setIsAutoLayoutRunning(false);
       if (rfInstance) {
         rfInstance.fitView({ duration: 600 });
       }
     }, 40);
-  }, [nodes, edges, setNodes, broadcastGraphSync, rfInstance]);
+  }, [setNodes, broadcastGraphSync, rfInstance]);
 
   // Toggle View Mode
   const handleToggleViewMode = useCallback(() => {
@@ -457,6 +559,10 @@ export function CollaborativeCanvas() {
         edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onNodeDrag={onNodeDrag}
+        onNodeDragStop={onNodeDragStop}
+        onNodesDelete={onNodesDelete}
+        onEdgesDelete={onEdgesDelete}
         onConnect={onConnect}
         onNodeClick={onNodeClick}
         onInit={setRfInstance}
